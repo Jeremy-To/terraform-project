@@ -1,35 +1,35 @@
-# 3-Tier Infrastructure on GCP
+# Infrastructure 3-Tiers sur GCP
 
-A production-grade, fully automated 3-tier infrastructure deployed on Google Cloud Platform using Terraform and PowerShell.
+Une infrastructure 3-tiers de qualité production, entièrement automatisée et déployée sur Google Cloud Platform via Terraform et PowerShell.
 
 ## 🏗️ Architecture
 
-The infrastructure consists of **7 Virtual Machines** distributed across 4 subnets for maximum security:
+L'infrastructure se compose de **7 Machines Virtuelles** réparties dans 4 sous-réseaux pour une sécurité maximale :
 
-| Tier | Component | Count | IP Range | Description |
-|------|-----------|-------|----------|-------------|
-| **Public** | **Load Balancer** | 1 | `34.x.x.x` | Nginx Bastion & Reverse Proxy. Entry point. |
-| **Web** | **Web Servers** | 2 | `10.0.2.x` | Nginx Web Servers serving static content. |
-| **App** | **App Servers** | 2 | `10.0.3.x` | Node.js API Servers (PM2 managed). |
-| **DB** | **Databases** | 2 | `10.0.4.x` | PostgreSQL Master/Replica cluster. |
+| Tier | Composant | Qté | Plage IP | Description |
+|------|-----------|-----|----------|-------------|
+| **Public** | **Load Balancer** | 1 | `34.x.x.x` | Bastion Nginx & Reverse Proxy. Point d'entrée unique. |
+| **Web** | **Serveurs Web** | 2 | `10.0.2.x` | Serveurs Web Nginx servant le contenu statique. |
+| **App** | **Serveurs App** | 2 | `10.0.3.x` | Serveurs API Node.js (gérés par PM2). |
+| **DB** | **Bases de Données** | 2 | `10.0.4.x` | Cluster PostgreSQL Maître/Réplique. |
 
-### Security Features
-- **Cloud NAT**: Allows private instances to install updates without public IPs.
-- **Firewall**: Strict rules. LB can only reach Web. Web can only reach App. App can only reach DB.
-- **Bastion Host**: The Load Balancer acts as a secure Jump Host for SSH access.
+### Fonctionnalités de Sécurité
+- **Cloud NAT** : Permet aux instances privées d'installer des mises à jour sans avoir d'IP publique.
+- **Pare-feu** : Règles strictes. Le LB ne peut atteindre que le Web. Le Web ne peut atteindre que l'App. L'App ne peut atteindre que la DB.
+- **Hôte Bastion** : Le Load Balancer agit comme un point d'accès SSH sécurisé (Jump Host).
 
 ---
 
-## 🚀 One-Click Deployment
+## 🚀 Déploiement en un Clic
 
-Everything is automated. You only need to run **one script**.
+Tout est automatisé. Vous n'avez besoin d'exécuter qu'**un seul script**.
 
-### Prerequisites
-1.  **Terraform** installed.
-2.  **GCP Credentials** configured (`gcloud auth application-default login`).
-3.  **SSH Key** generated at `~/.ssh/id_rsa`.
+### Prérequis
+1.  **Terraform** installé.
+2.  **Identifiants GCP** configurés (`gcloud auth application-default login`).
+3.  **Clé SSH** générée dans `~/.ssh/id_rsa`.
 
-### Step 1: Provision Infrastructure
+### Étape 1 : Provisionner l'Infrastructure
 ```powershell
 cd terraform
 terraform init
@@ -37,76 +37,76 @@ terraform apply -auto-approve
 cd ..
 ```
 
-### Step 2: Deploy Software
-Run the automated deployment script. This handles everything:
+### Étape 2 : Déployer les Logiciels
+Exécutez le script de déploiement automatisé. Il gère tout :
 ```powershell
 .\DEPLOY.ps1
 ```
-*This script uploads a deployment payload to the Load Balancer and orchestrates the installation of Nginx, Node.js, and PostgreSQL on all internal servers.*
+*Ce script télécharge une charge utile de déploiement sur le Load Balancer et orchestre l'installation de Nginx, Node.js et PostgreSQL sur tous les serveurs internes.*
 
 ---
 
-## ✅ Verification
+## ✅ Vérification
 
-After deployment, the script will output the Load Balancer IP (e.g., `34.45.157.123`).
+Après le déploiement, le script affichera l'IP du Load Balancer (ex: `34.45.157.123`).
 
-### 1. Public Access
-Open your browser or run:
+### 1. Accès Public
+Ouvrez votre navigateur ou exécutez :
 ```powershell
-curl http://<LOAD_BALANCER_IP>
+curl http://<IP_LOAD_BALANCER>
 ```
-*Expected Output:* `<h1>Web Server - web-server-X</h1>...`
+*Résultat attendu :* `<h1>Web Server - web-server-X</h1>...`
 
-### 2. Internal Connectivity Check
-SSH into the Load Balancer to verify internal paths:
+### 2. Vérification de la Connectivité Interne
+Connectez-vous en SSH au Load Balancer pour vérifier les chemins internes :
 ```bash
-ssh ubuntu@<LOAD_BALANCER_IP>
+ssh ubuntu@<IP_LOAD_BALANCER>
 ```
 
-From there, verify the chain:
+Depuis là, vérifiez la chaîne de connexion :
 ```bash
-# Check Web Server
+# Vérifier le Serveur Web
 curl http://10.0.2.2
 
-# Check App Server (from Web Server)
+# Vérifier le Serveur App (depuis le Serveur Web)
 ssh 10.0.2.2 "curl http://10.0.3.2:3000"
 
-# Check Database (from App Server)
+# Vérifier la Base de Données (depuis le Serveur App)
 ssh 10.0.2.2 "ssh 10.0.3.2 'nc -zv 10.0.4.2 5432'"
 ```
 
 ---
 
-## 🔧 Troubleshooting
+## 🔧 Dépannage
 
 ### "502 Bad Gateway"
-- **Cause**: Web Servers are not running Nginx or are unreachable.
-- **Fix**: Re-run `.\DEPLOY.ps1` to ensure software is installed. Check `ssh ubuntu@10.0.2.2 "systemctl status nginx"`.
+- **Cause** : Les serveurs Web ne font pas tourner Nginx ou sont inaccessibles.
+- **Solution** : Relancez `.\DEPLOY.ps1` pour vous assurer que les logiciels sont installés. Vérifiez avec `ssh ubuntu@10.0.2.2 "systemctl status nginx"`.
 
-### "Connection Timed Out" during deployment
-- **Cause**: Private instances cannot reach the internet.
-- **Fix**: Ensure **Cloud NAT** is created in Terraform (`terraform/nat.tf`).
+### "Connection Timed Out" pendant le déploiement
+- **Cause** : Les instances privées ne peuvent pas atteindre Internet.
+- **Solution** : Assurez-vous que le **Cloud NAT** est créé dans Terraform (`terraform/nat.tf`).
 
 ### SSH Permission Denied
-- **Cause**: The Load Balancer doesn't have the SSH key.
-- **Fix**: The `DEPLOY.ps1` script handles this, but you can manually fix it:
+- **Cause** : Le Load Balancer n'a pas la clé SSH.
+- **Solution** : Le script `DEPLOY.ps1` gère cela, mais vous pouvez le corriger manuellement :
   ```powershell
-  scp -i ~/.ssh/id_rsa ~/.ssh/id_rsa ubuntu@<LB_IP>:~/.ssh/
+  scp -i ~/.ssh/id_rsa ~/.ssh/id_rsa ubuntu@<IP_LB>:~/.ssh/
   ```
 
 ---
 
-## 📂 Project Structure
+## 📂 Structure du Projet
 
 ```
-├── DEPLOY.ps1                  # MAIN DEPLOYMENT SCRIPT
-├── README.md                   # This documentation
+├── DEPLOY.ps1                  # SCRIPT DE DÉPLOIEMENT PRINCIPAL
+├── README.md                   # Cette documentation
 ├── terraform/                  # Infrastructure as Code
-│   ├── main.tf                 # VM definitions
-│   ├── network.tf              # VPC & Subnets
-│   ├── firewall.tf             # Security Rules
-│   ├── nat.tf                  # Cloud NAT (Internet Access)
+│   ├── main.tf                 # Définitions des VMs
+│   ├── network.tf              # VPC & Sous-réseaux
+│   ├── firewall.tf             # Règles de sécurité
+│   ├── nat.tf                  # Cloud NAT (Accès Internet)
 │   └── variables.tf            # Configuration
 └── scripts/
-    └── deploy-bulletproof.sh   # Internal deployment logic (runs on LB)
+    └── deploy-bulletproof.sh   # Logique interne de déploiement (exécutée sur le LB)
 ```
