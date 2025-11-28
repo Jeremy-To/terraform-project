@@ -1,0 +1,63 @@
+---
+# App Server role
+- name: Create application directory
+  file:
+    path: /opt/app
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: '0755'
+
+- name: Deploy backend application
+  synchronize:
+    src: "{{ playbook_dir }}/../../app/backend/"
+    dest: /opt/app/
+    delete: yes
+    recursive: yes
+  delegate_to: localhost
+
+- name: Set correct permissions on app files
+  file:
+    path: /opt/app
+    owner: ubuntu
+    group: ubuntu
+    recurse: yes
+
+- name: Install Node.js dependencies
+  npm:
+    path: /opt/app
+    state: present
+  become_user: ubuntu
+
+- name: Create environment file
+  template:
+    src: env.j2
+    dest: /opt/app/.env
+    owner: ubuntu
+    group: ubuntu
+    mode: '0600'
+
+- name: Stop existing PM2 processes
+  command: pm2 delete all
+  become_user: ubuntu
+  ignore_errors: yes
+
+- name: Start application with PM2
+  command: pm2 start app.js --name "3tier-backend" -i 2
+  args:
+    chdir: /opt/app
+  become_user: ubuntu
+
+- name: Save PM2 process list
+  command: pm2 save
+  become_user: ubuntu
+
+- name: Configure firewall - allow app port
+  ufw:
+    rule: allow
+    port: '3000'
+    proto: tcp
+
+- name: Ensure PM2 starts on boot
+  command: pm2 startup systemd -u ubuntu --hp /home/ubuntu
+  ignore_errors: yes

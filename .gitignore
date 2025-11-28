@@ -1,0 +1,56 @@
+# .gitignore for 3-Tier Infrastructure Project
+
+# Terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/*.tfvars
+terraform/tfplan
+terraform/.terraform.tfstate.lock.info
+
+# Packer
+packer/packer_cache/
+packer/*.auto.pkrvars.hcl
+packer/variables.auto.pkrvars.hcl
+
+# Ansible
+ansible/inventory/hosts
+ansible/*.retry
+ansible/.vault_pass.txt
+
+# Environment files
+**/.env
+**/.env.local
+**/node_modules/
+
+# SSH Keys
+**/*.pem
+**/*.key
+**/.ssh/*
+!**/.ssh/*.pub
+
+# Logs
+*.log
+**/logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Backup files
+*.backup
+*.bak
+*~
+
+# Secrets
+secrets.yml
+secrets.yaml

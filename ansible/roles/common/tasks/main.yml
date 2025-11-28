@@ -1,0 +1,60 @@
+---
+# Common role for all servers
+- name: Install common packages
+  apt:
+    name:
+      - curl
+      - wget
+      - git
+      - vim
+      - htop
+      - net-tools
+      - ufw
+    state: present
+    update_cache: yes
+
+- name: Configure firewall - allow SSH
+  ufw:
+    rule: allow
+    port: '22'
+    proto: tcp
+
+- name: Enable firewall
+  ufw:
+    state: enabled
+
+- name: Set timezone to UTC
+  timezone:
+    name: UTC
+
+- name: Configure NTP
+  apt:
+    name: systemd-timesyncd
+    state: present
+
+- name: Enable NTP service
+  systemd:
+    name: systemd-timesyncd
+    enabled: yes
+    state: started
+
+- name: Disable unnecessary services
+  systemd:
+    name: "{{ item }}"
+    enabled: no
+    state: stopped
+  loop:
+    - snapd
+  ignore_errors: yes
+
+- name: Configure sysctl for performance
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  loop:
+    - { key: 'net.ipv4.tcp_tw_reuse', value: '1' }
+    - { key: 'net.ipv4.ip_local_port_range', value: '1024 65535' }
+    - { key: 'net.core.somaxconn', value: '65535' }
+  ignore_errors: yes

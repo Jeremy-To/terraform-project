@@ -1,0 +1,69 @@
+---
+# Main deployment playbook
+- name: Deploy 3-Tier Infrastructure
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Wait for system to be ready
+      wait_for_connection:
+        timeout: 300
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+
+# Deploy common configuration to all servers
+- name: Configure Common Settings
+  hosts: all
+  become: yes
+  roles:
+    - common
+
+# Deploy database servers (master then replica)
+- name: Configure Database Master
+  hosts: db_servers
+  become: yes
+  serial: 1
+  roles:
+    - { role: db_server, when: "db_role == 'master'" }
+
+- name: Configure Database Replica
+  hosts: db_servers
+  become: yes
+  serial: 1
+  roles:
+    - { role: db_server, when: "db_role == 'replica'" }
+
+# Deploy application servers
+- name: Configure Application Servers
+  hosts: app_servers
+  become: yes
+  roles:
+    - app_server
+
+# Deploy web servers
+- name: Configure Web Servers
+  hosts: web_servers
+  become: yes
+  roles:
+    - web_server
+
+# Deploy load balancer (last to ensure upstreams are ready)
+- name: Configure Load Balancer
+  hosts: load_balancer
+  become: yes
+  roles:
+    - load_balancer
+
+# Post-deployment validation
+- name: Validate Deployment
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Display deployment summary
+      debug:
+        msg: "Deployment completed successfully! Check load balancer IP for access."

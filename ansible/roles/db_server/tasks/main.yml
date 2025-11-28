@@ -1,0 +1,155 @@
+---
+# Database Server role
+- name: Ensure PostgreSQL is stopped
+  systemd:
+    name: postgresql
+    state: stopped
+  ignore_errors: yes
+
+- name: Configure PostgreSQL to listen on all interfaces
+  lineinfile:
+    path: /etc/postgresql/15/main/postgresql.conf
+    regexp: '^#?listen_addresses'
+    line: "listen_addresses = '*'"
+  notify: restart postgresql
+
+- name: Configure PostgreSQL max connections
+  lineinfile:
+    path: /etc/postgresql/15/main/postgresql.conf
+    regexp: '^#?max_connections'
+    line: "max_connections = 100"
+  notify: restart postgresql
+
+- name: Configure PostgreSQL shared buffers
+  lineinfile:
+    path: /etc/postgresql/15/main/postgresql.conf
+    regexp: '^#?shared_buffers'
+    line: "shared_buffers = 256MB"
+  notify: restart postgresql
+
+# Master-specific configuration
+- name: Configure WAL level for replication (master only)
+  lineinfile:
+    path: /etc/postgresql/15/main/postgresql.conf
+    regexp: '^#?wal_level'
+    line: "wal_level = replica"
+  when: db_role == 'master'
+  notify: restart postgresql
+
+- name: Configure max WAL senders (master only)
+  lineinfile:
+    path: /etc/postgresql/15/main/postgresql.conf
+    regexp: '^#?max_wal_senders'
+    line: "max_wal_senders = 3"
+  when: db_role == 'master'
+  notify: restart postgresql
+
+- name: Configure WAL keep size (master only)
+  lineinfile:
+    path: /etc/postgresql/15/main/postgresql.conf
+    regexp: '^#?wal_keep_size'
+    line: "wal_keep_size = 64"
+  when: db_role == 'master'
+  notify: restart postgresql
+
+# HBA configuration
+- name: Configure pg_hba.conf for remote connections
+  blockinfile:
+    path: /etc/postgresql/15/main/pg_hba.conf
+    marker: "# {mark} ANSIBLE MANAGED BLOCK"
+    block: |
+      # App server connections
+      {% for host in groups['app_servers'] %}
+      host    all             appuser         {{ hostvars[host]['ansible_host'] }}/32            md5
+      {% endfor %}
+      # Replication connection
+      {% if db_role == 'master' %}
+      host    replication     replicator      {{ hostvars[groups['db_servers'][1]]['ansible_host'] }}/32   md5
+      {% endif %}
+  notify: restart postgresql
+
+- name: Start PostgreSQL
+  systemd:
+    name: postgresql
+    state: started
+    enabled: yes
+
+# Master-specific tasks
+- name: Create application database (master only)
+  postgresql_db:
+    name: appdb
+    state: present
+  become_user: postgres
+  when: db_role == 'master'
+
+- name: Create application user (master only)
+  postgresql_user:
+    name: appuser
+    password: "{{ db_password | default('changeme_secure_password') }}"
+    db: appdb
+    priv: ALL
+    state: present
+  become_user: postgres
+  when: db_role == 'master'
+
+- name: Create replication user (master only)
+  postgresql_user:
+    name: replicator
+    password: "{{ replication_password | default('replication_password') }}"
+    role_attr_flags: REPLICATION
+    state: present
+  become_user: postgres
+  when: db_role == 'master'
+
+# Replica-specific tasks
+- name: Stop PostgreSQL on replica
+  systemd:
+    name: postgresql
+    state: stopped
+  when: db_role == 'replica'
+
+- name: Remove old data directory on replica
+  file:
+    path: /var/lib/postgresql/15/main
+    state: absent
+  when: db_role == 'replica'
+
+- name: Create base backup from master (replica only)
+  shell: |
+    PGPASSWORD='{{ replication_password | default("replication_password") }}' \
+    pg_basebackup -h {{ hostvars[groups['db_servers'][0]]['ansible_host'] }} \
+    -D /var/lib/postgresql/15/main -U replicator -P -v -R -X stream -C -S replica_slot
+  become_user: postgres
+  when: db_role == 'replica'
+  ignore_errors: yes
+
+- name: Start PostgreSQL on replica
+  systemd:
+    name: postgresql
+    state: started
+    enabled: yes
+  when: db_role == 'replica'
+
+# Firewall configuration
+- name: Configure firewall - allow PostgreSQL
+  ufw:
+    rule: allow
+    port: '5432'
+    proto: tcp
+
+# Backup configuration (master only)
+- name: Create backup script (master only)
+  template:
+    src: backup.sh.j2
+    dest: /usr/local/bin/pg_backup.sh
+    mode: '0755'
+  when: db_role == 'master'
+
+- name: Create backup cron job (master only)
+  cron:
+    name: "PostgreSQL daily backup"
+    hour: "2"
+    minute: "0"
+    job: "/usr/local/bin/pg_backup.sh"
+    user: postgres
+  when: db_role == 'master'

@@ -1,0 +1,20 @@
+---
+# Packer provisioning playbook for web server image
+- name: Provision Web Server Base Image
+  hosts: localhost
+  become: yes
+  
+  tasks:
+    - name: Create web directory
+      file:
+        path: /var/www/html
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+
+    - name: Create nginx config directory
+      file:
+        path: /etc/nginx/sites-available
+        state: directory
+        mode: '0755'

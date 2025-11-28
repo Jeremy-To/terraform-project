@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3-Tier Infrastructure Demo</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 3-Tier Production Infrastructure</h1>
+            <p class="subtitle">Powered by Terraform • Packer • Ansible</p>
+        </header>
+
+        <section class="status-section">
+            <h2>System Status</h2>
+            <div class="status-grid">
+                <div class="status-card" id="api-status">
+                    <div class="status-icon">🔌</div>
+                    <h3>API Server</h3>
+                    <p class="status-text">Checking...</p>
+                </div>
+                <div class="status-card" id="db-status">
+                    <div class="status-icon">💾</div>
+                    <h3>Database</h3>
+                    <p class="status-text">Checking...</p>
+                </div>
+                <div class="status-card" id="replication-status">
+                    <div class="status-icon">🔄</div>
+                    <h3>Replication</h3>
+                    <p class="status-text">Checking...</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="demo-section">
+            <h2>API Demo</h2>
+            <div class="demo-controls">
+                <button id="btn-get-data" class="btn btn-primary">Get Data</button>
+                <button id="btn-create-data" class="btn btn-success">Create Record</button>
+                <button id="btn-stats" class="btn btn-info">View Stats</button>
+            </div>
+            <div class="demo-output">
+                <h3>Response:</h3>
+                <pre id="api-response">Click a button to interact with the API...</pre>
+            </div>
+        </section>
+
+        <section class="info-section">
+            <h2>Architecture</h2>
+            <div class="architecture-info">
+                <div class="tier-card">
+                    <h3>Load Balancer</h3>
+                    <p>Nginx reverse proxy distributing traffic</p>
+                </div>
+                <div class="tier-card">
+                    <h3>Web Servers (×2)</h3>
+                    <p>Nginx serving static content</p>
+                </div>
+                <div class="tier-card">
+                    <h3>App Servers (×2)</h3>
+                    <p>Node.js backend with REST API</p>
+                </div>
+                <div class="tier-card">
+                    <h3>Database (×2)</h3>
+                    <p>PostgreSQL with master-replica replication</p>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <p>Deployed in &lt; 15 minutes | 7 VMs | Full Automation</p>
+        </footer>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

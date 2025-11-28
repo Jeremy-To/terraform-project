@@ -1,0 +1,5 @@
+# Packer Configuration Variables
+# Copy this file to variables.auto.pkrvars.hcl and fill in your values
+
+project_id = "your-gcp-project-id"
+zone       = "us-central1-a"

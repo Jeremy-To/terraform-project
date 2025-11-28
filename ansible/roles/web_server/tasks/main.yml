@@ -1,0 +1,70 @@
+---
+# Web Server role
+- name: Install Nginx
+  apt:
+    name: nginx
+    state: present
+
+- name: Remove default Nginx configuration
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+
+- name: Create web root directory
+  file:
+    path: /var/www/html
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0755'
+
+- name: Deploy frontend application
+  synchronize:
+    src: "{{ playbook_dir }}/../../app/frontend/"
+    dest: /var/www/html/
+    delete: yes
+    recursive: yes
+  delegate_to: localhost
+
+- name: Set correct permissions on web files
+  file:
+    path: /var/www/html
+    owner: www-data
+    group: www-data
+    recurse: yes
+
+- name: Create Nginx web server configuration
+  template:
+    src: nginx-web.conf.j2
+    dest: /etc/nginx/sites-available/web-server.conf
+    mode: '0644'
+  notify: reload nginx
+
+- name: Enable web server configuration
+  file:
+    src: /etc/nginx/sites-available/web-server.conf
+    dest: /etc/nginx/sites-enabled/web-server.conf
+    state: link
+  notify: reload nginx
+
+- name: Configure firewall - allow HTTP
+  ufw:
+    rule: allow
+    port: '80'
+    proto: tcp
+
+- name: Configure firewall - allow HTTPS
+  ufw:
+    rule: allow
+    port: '443'
+    proto: tcp
+
+- name: Ensure Nginx is started and enabled
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: Test Nginx configuration
+  command: nginx -t
+  changed_when: false

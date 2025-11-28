@@ -1,0 +1,19 @@
+---
+# Packer provisioning playbook for app server image
+- name: Provision App Server Base Image
+  hosts: localhost
+  become: yes
+  
+  tasks:
+    - name: Create application directory
+      file:
+        path: /opt/app
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Configure PM2 startup
+      shell: pm2 startup systemd -u ubuntu --hp /home/ubuntu
+      args:
+        creates: /etc/systemd/system/pm2-ubuntu.service

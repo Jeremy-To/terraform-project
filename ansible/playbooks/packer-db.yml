@@ -1,0 +1,14 @@
+---
+# Packer provisioning playbook for database server image
+- name: Provision Database Server Base Image
+  hosts: localhost
+  become: yes
+  
+  tasks:
+    - name: Create PostgreSQL backup directory
+      file:
+        path: /var/backups/postgresql
+        state: directory
+        owner: postgres
+        group: postgres
+        mode: '0700'

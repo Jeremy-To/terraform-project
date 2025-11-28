@@ -1,0 +1,47 @@
+---
+# Load Balancer role
+- name: Install Nginx
+  apt:
+    name: nginx
+    state: present
+
+- name: Remove default Nginx configuration
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+
+- name: Create Nginx load balancer configuration
+  template:
+    src: nginx-lb.conf.j2
+    dest: /etc/nginx/sites-available/load-balancer.conf
+    mode: '0644'
+  notify: reload nginx
+
+- name: Enable load balancer configuration
+  file:
+    src: /etc/nginx/sites-available/load-balancer.conf
+    dest: /etc/nginx/sites-enabled/load-balancer.conf
+    state: link
+  notify: reload nginx
+
+- name: Configure firewall - allow HTTP
+  ufw:
+    rule: allow
+    port: '80'
+    proto: tcp
+
+- name: Configure firewall - allow HTTPS
+  ufw:
+    rule: allow
+    port: '443'
+    proto: tcp
+
+- name: Ensure Nginx is started and enabled
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: Test Nginx configuration
+  command: nginx -t
+  changed_when: false
